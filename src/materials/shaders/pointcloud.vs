@@ -34,6 +34,8 @@ uniform float spacing;
 uniform float blendDepth;
 uniform float near;
 uniform float far;
+uniform float level;
+uniform float visibleNodesOffset;
 
 #if defined use_clip_box
 	uniform mat4 clipBoxes[clip_box_count];
@@ -47,7 +49,9 @@ uniform float intensityMax;
 uniform float size;
 uniform float minSize;
 uniform float maxSize;
+uniform float octreeSize;
 uniform float nodeSize;
+uniform vec3 bbMin;
 uniform vec3 bbSize;
 uniform vec3 uColor;
 uniform float opacity;
@@ -57,6 +61,7 @@ uniform sampler2D visibleNodes;
 uniform sampler2D gradient;
 uniform sampler2D classificationLUT;
 uniform sampler2D depthMap;
+uniform sampler2D decal;
 
 varying float	vOpacity;
 varying vec3	vColor;
@@ -66,7 +71,6 @@ varying vec3	vViewPosition;
 varying float 	vRadius;
 varying vec3	vWorldPosition;
 varying vec3	vNormal;
-
 
 // ---------------------
 // OCTREE
@@ -106,11 +110,12 @@ bool isBitSet(float number, float index){
  */
 float getLocalTreeDepth(){
 	vec3 offset = vec3(0.0, 0.0, 0.0);
-	float iOffset = 0.0;
-	float depth = 0.0;
+	offset = bbMin;
+	float iOffset = visibleNodesOffset;
+	float depth = level;
 	for(float i = 0.0; i <= levels + 1.0; i++){
 		
-		float nodeSizeAtLevel = nodeSize / pow(2.0, i);
+		float nodeSizeAtLevel = octreeSize / pow(2.0, i + level);
 		vec3 index3d = (position - offset) / nodeSizeAtLevel;
 		index3d = floor(index3d + 0.5);
 		float index = 4.0*index3d.x + 2.0*index3d.y + index3d.z;
@@ -129,6 +134,18 @@ float getLocalTreeDepth(){
 	}
 		
 	return depth;
+}
+
+bool isAtBottom(){
+	vec3 index3d = (position - bbMin) / nodeSize;
+	index3d = floor(index3d + 0.5);
+	float index = 4.0*index3d.x + 2.0*index3d.y + index3d.z;
+
+	vec4 value = texture2D(visibleNodes, vec2(visibleNodesOffset / 2048.0, 0.0));
+	
+	float mask = value.r * 255.0;
+	
+	return !isBitSet(mask, index);
 }
 
 float getPointSizeAttenuation(){
@@ -261,6 +278,12 @@ void main() {
 		vColor = (modelMatrix * vec4(normal, 0.0)).xyz;
 	#elif defined color_type_phong
 		vColor = color;
+	#elif defined color_type_decal
+		vec2 uv = ((position - bbMin) / nodeSize).xy;
+		vColor = texture2D(decal, uv).rgb;
+		//vColor = vec3(uv, 0.0);
+		
+		//vColor = texture2D(decal, uv).rgb * 0.5 + vec3(uv, 0.0) * 0.5;
 	#endif
 	
 	//if(vNormal.z < 0.0){
@@ -292,6 +315,11 @@ void main() {
 	vRadius = pointSize / projFactor;
 	
 	gl_PointSize = pointSize;
+	
+	
+	if(!isAtBottom()){
+		gl_Position = vec4(1000.0, 1000.0, 1000.0, 1.0);
+	}
 	
 	
 	// ---------------------

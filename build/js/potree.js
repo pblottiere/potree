@@ -97,6 +97,8 @@ Potree.Shaders["pointcloud.vs"] = [
  "uniform float blendDepth;",
  "uniform float near;",
  "uniform float far;",
+ "uniform float level;",
+ "uniform float visibleNodesOffset;",
  "",
  "#if defined use_clip_box",
  "	uniform mat4 clipBoxes[clip_box_count];",
@@ -110,7 +112,9 @@ Potree.Shaders["pointcloud.vs"] = [
  "uniform float size;",
  "uniform float minSize;",
  "uniform float maxSize;",
+ "uniform float octreeSize;",
  "uniform float nodeSize;",
+ "uniform vec3 bbMin;",
  "uniform vec3 bbSize;",
  "uniform vec3 uColor;",
  "uniform float opacity;",
@@ -120,6 +124,7 @@ Potree.Shaders["pointcloud.vs"] = [
  "uniform sampler2D gradient;",
  "uniform sampler2D classificationLUT;",
  "uniform sampler2D depthMap;",
+ "uniform sampler2D decal;",
  "",
  "varying float	vOpacity;",
  "varying vec3	vColor;",
@@ -129,7 +134,6 @@ Potree.Shaders["pointcloud.vs"] = [
  "varying float 	vRadius;",
  "varying vec3	vWorldPosition;",
  "varying vec3	vNormal;",
- "",
  "",
  "// ---------------------",
  "// OCTREE",
@@ -169,11 +173,12 @@ Potree.Shaders["pointcloud.vs"] = [
  " */",
  "float getLocalTreeDepth(){",
  "	vec3 offset = vec3(0.0, 0.0, 0.0);",
- "	float iOffset = 0.0;",
- "	float depth = 0.0;",
+ "	offset = bbMin;",
+ "	float iOffset = visibleNodesOffset;",
+ "	float depth = level;",
  "	for(float i = 0.0; i <= levels + 1.0; i++){",
  "		",
- "		float nodeSizeAtLevel = nodeSize / pow(2.0, i);",
+ "		float nodeSizeAtLevel = octreeSize / pow(2.0, i + level);",
  "		vec3 index3d = (position - offset) / nodeSizeAtLevel;",
  "		index3d = floor(index3d + 0.5);",
  "		float index = 4.0*index3d.x + 2.0*index3d.y + index3d.z;",
@@ -192,6 +197,18 @@ Potree.Shaders["pointcloud.vs"] = [
  "	}",
  "		",
  "	return depth;",
+ "}",
+ "",
+ "bool isAtBottom(){",
+ "	vec3 index3d = (position - bbMin) / nodeSize;",
+ "	index3d = floor(index3d + 0.5);",
+ "	float index = 4.0*index3d.x + 2.0*index3d.y + index3d.z;",
+ "",
+ "	vec4 value = texture2D(visibleNodes, vec2(visibleNodesOffset / 2048.0, 0.0));",
+ "	",
+ "	float mask = value.r * 255.0;",
+ "	",
+ "	return !isBitSet(mask, index);",
  "}",
  "",
  "float getPointSizeAttenuation(){",
@@ -324,6 +341,12 @@ Potree.Shaders["pointcloud.vs"] = [
  "		vColor = (modelMatrix * vec4(normal, 0.0)).xyz;",
  "	#elif defined color_type_phong",
  "		vColor = color;",
+ "	#elif defined color_type_decal",
+ "		vec2 uv = ((position - bbMin) / nodeSize).xy;",
+ "		vColor = texture2D(decal, uv).rgb;",
+ "		//vColor = vec3(uv, 0.0);",
+ "		",
+ "		//vColor = texture2D(decal, uv).rgb * 0.5 + vec3(uv, 0.0) * 0.5;",
  "	#endif",
  "	",
  "	//if(vNormal.z < 0.0){",
@@ -355,6 +378,11 @@ Potree.Shaders["pointcloud.vs"] = [
  "	vRadius = pointSize / projFactor;",
  "	",
  "	gl_PointSize = pointSize;",
+ "	",
+ "	",
+ "	if(!isAtBottom()){",
+ "		gl_Position = vec4(1000.0, 1000.0, 1000.0, 1.0);",
+ "	}",
  "	",
  "	",
  "	// ---------------------",
@@ -1488,7 +1516,8 @@ Potree.PointColorType = {
 	SOURCE: 			10,
 	NORMAL: 			11,
 	PHONG: 				12,
-	TREE_DEPTH: 		13
+	TREE_DEPTH: 		13,
+	DECAL:				14
 };
 
 Potree.ClipMode = {
@@ -1503,6 +1532,7 @@ Potree.TreeType = {
 };
 
 Potree.PointCloudMaterial = function(parameters){
+	THREE.Material.call( this );
 	parameters = parameters || {};
 
 	var color = new THREE.Color( 0x000000 );
@@ -1527,6 +1557,7 @@ Potree.PointCloudMaterial = function(parameters){
 	this._weighted = false;
 	this._blendDepth = 0.1;
 	this._depthMap;
+	this._decal;
 	this._gradient = Potree.Gradients.RAINBOW;
 	this._classification = Potree.Classification.DEFAULT;
 	this.gradientTexture = Potree.PointCloudMaterial.generateGradientTexture(this._gradient);
@@ -1551,18 +1582,23 @@ Potree.PointCloudMaterial = function(parameters){
 		minSize:   			{ type: "f", value: 2 },
 		maxSize:   			{ type: "f", value: 2 },
 		nodeSize:			{ type: "f", value: nodeSize },
+		octreeSize:			{ type: "f", value: 0 },
+		bbMin:				{ type: "fv", value: [0,0,0] },
 		bbSize:				{ type: "fv", value: [0,0,0] },
 		heightMin:			{ type: "f", value: 0.0 },
 		heightMax:			{ type: "f", value: 1.0 },
 		intensityMin:		{ type: "f", value: 0.0 },
 		intensityMax:		{ type: "f", value: 1.0 },
-		visibleNodes:		{ type: "t", value: this.visibleNodesTexture },
 		pcIndex:   			{ type: "f", value: 0 },
+		level:				{ type: "f", value: 0 },
+		visibleNodesOffset:	{ type: "f", value: 0 },
+		visibleNodes:		{ type: "t", value: this.visibleNodesTexture },
 		gradient: 			{ type: "t", value: this.gradientTexture },
 		classificationLUT: 	{ type: "t", value: this.classificationTexture },
+		depthMap: 			{ type: "t", value: null },
+		decal:	 			{ type: "t", value: new THREE.Texture() },
 		clipBoxes:			{ type: "Matrix4fv", value: [] },
 		blendDepth:			{ type: "f", value: this._blendDepth },
-		depthMap: 			{ type: "t", value: null },
 		diffuse:			{ type: "fv", value: [1,1,1]},
 		ambient:			{ type: "fv", value: [0.1, 0.1, 0.1]},
 		ambientLightColor: 			{ type: "fv", value: [1, 1, 1] },
@@ -1630,6 +1666,13 @@ Potree.PointCloudMaterial.prototype.updateShaderSource = function(){
 		this.uniforms.depthMap.value = this.depthMap;
 		this.setValues({
 			depthMap: this.depthMap,
+		});
+	}
+	
+	if(this.decal){
+		this.uniforms.decal.value = this.decal;
+		this.setValues({
+			decal: this.decal,
 		});
 	}
 	
@@ -1713,6 +1756,8 @@ Potree.PointCloudMaterial.prototype.getDefines = function(){
 		defines += "#define color_type_normal\n";
 	}else if(this._pointColorType === Potree.PointColorType.PHONG){
 		defines += "#define color_type_phong\n";
+	}else if(this._pointColorType === Potree.PointColorType.DECAL){
+		defines += "#define color_type_decal\n";
 	}
 	
 	if(this.clipMode === Potree.ClipMode.DISABLED){
@@ -1897,9 +1942,11 @@ Object.defineProperty(Potree.PointCloudMaterial.prototype, "opacity", {
 		return this.uniforms.opacity.value;
 	},
 	set: function(value){
-		if(this.uniforms.opacity.value !== value){
-			this.uniforms.opacity.value = value;
-			this.updateShaderSource();
+		if(this.uniforms.opacity){
+			if(this.uniforms.opacity.value !== value){
+				this.uniforms.opacity.value = value;
+				this.updateShaderSource();
+			}
 		}
 	}
 });
@@ -1935,6 +1982,18 @@ Object.defineProperty(Potree.PointCloudMaterial.prototype, "depthMap", {
 	set: function(value){
 		if(this._depthMap !== value){
 			this._depthMap = value;
+			this.updateShaderSource();
+		}
+	}
+});
+
+Object.defineProperty(Potree.PointCloudMaterial.prototype, "decal", {
+	get: function(){
+		return this._decal;
+	},
+	set: function(value){
+		if(this._decal !== value){
+			this._decal = value;
 			this.updateShaderSource();
 		}
 	}
@@ -3774,6 +3833,7 @@ Potree.PointCloudOctree = function(geometry, material){
 	this.pickMaterial;
 	this.maxLevel = 0;
 	this.generateDEM = false;
+	this.mapProjector = new Potree.OLMapProjector(this);
 	
 	var rootProxy = new Potree.PointCloudOctreeProxyNode(this.pcoGeometry.root);
 	this.add(rootProxy);
@@ -3887,8 +3947,44 @@ Potree.PointCloudOctree.prototype.updateProfileRequests = function(){
 Potree.PointCloudOctree.prototype.updatePointCloud = function(node, element, stack, visibleGeometryNames){
 	this.numVisibleNodes++;
 	this.numVisiblePoints += node.numPoints;
-	node.material = this.material;
 	this.visibleNodes.push(element);
+	
+	node.material.fov = camera.fov * (Math.PI / 180);
+	node.material.screenWidth = renderer.domElement.clientWidth;
+	node.material.screenHeight = renderer.domElement.clientHeight;
+	node.material.spacing = this.pcoGeometry.spacing;
+	node.material.near = camera.near;
+	node.material.far = camera.far;
+	node.material.octreeLevels = this.maxLevel;
+	node.material.pointColorType = this.material.pointColorType;
+	node.material.pointSizeType = this.material.pointSizeType;
+	node.material.pointShape = this.material.pointShape;
+	node.material.interpolate = this.material.interpolate;
+	node.material.size = this.material.size;
+	node.material.heightMin = this.material.heightMin;
+	node.material.heightMax = this.material.heightMax;
+	node.material.intensityMin = this.material.intensityMin;
+	node.material.intensityMax = this.material.intensityMax;
+	node.material.weighted = this.material.weighted;
+	node.material.opacity = this.material.opacity;
+	node.material.minSize = this.material.minSize;
+	node.material.uniforms.level.value = node.level;
+	
+	node.material.uniforms.octreeSize.value = this.pcoGeometry.boundingBox.size().x;
+	node.material.uniforms.nodeSize.value = node.pcoGeometry.boundingBox.size().x;
+	node.material.uniforms.bbMin.value = node.pcoGeometry.boundingBox.min.toArray();
+	
+	node.material.uniforms.visibleNodesTexture = this.material.visibleNodesTexture;
+	node.material.uniforms.visibleNodes.value = this.material.visibleNodesTexture;
+	
+	if(!node.geoTexture){
+		node.visible = false;
+	}
+	
+	if(typeof node.mapProjector === "undefined"){
+		node.mapProjector = new Potree.OLMapProjector(this);
+		node.mapProjector.project(node);
+	}
 	
 	if(node.level){
 		this.maxLevel = Math.max(node.level, this.maxLevel);
@@ -4032,7 +4128,8 @@ Potree.PointCloudOctree.prototype.update = function(camera, renderer){
 	this.hideDescendants(this.children[0]);
 	var vn = [];
 	for(var i = 0; i < this.visibleNodes.length; i++){
-		this.visibleNodes[i].node.visible = true;
+		// TODO = trues
+		this.visibleNodes[i].node.visible = this.visibleNodes[i].node.geoTexture != null;
 		vn.push(this.visibleNodes[i].node);
 	}
 	
@@ -4185,6 +4282,7 @@ Potree.PointCloudOctree.prototype.updateVisibilityTexture = function(material, v
 	
 	for(var i = 0; i < visibleNodes.length; i++){
 		var node = visibleNodes[i];
+		node.material.uniforms.visibleNodesOffset.value = i;
 		
 		var children = [];
 		for(var j = 0; j < node.children.length; j++){
@@ -4267,7 +4365,8 @@ Potree.PointCloudOctree.prototype.replaceProxy = function(proxy){
 	var geometryNode = proxy.geometryNode;
 	if(geometryNode.loaded === true){
 		var geometry = geometryNode.geometry;
-		var node = new THREE.PointCloud(geometry, this.material);
+		var material = new Potree.PointCloudMaterial();
+		var node = new THREE.PointCloud(geometry, material);
 		node.name = proxy.name;
 		node.level = proxy.level;
 		node.numPoints = proxy.numPoints;
@@ -5160,6 +5259,31 @@ Object.defineProperty(Potree.PointCloudOctree.prototype, "progress", {
 		return this.visibleNodes.length / this.visibleGeometry.length;
 	}
 });
+
+Object.defineProperty(Potree.PointCloudOctree.prototype, "geoProjection", {
+	get: function(){
+		//return "EPSG:21781"; // swiss
+		return "EPSG:26910"; // CA13 SAN SIMEON
+	}
+});
+
+Object.defineProperty(Potree.PointCloudOctree.prototype, "geoMinimum", {
+	get: function(){
+		return this.boundingBox.min;
+	}
+});
+
+Object.defineProperty(Potree.PointCloudOctree.prototype, "geoMaximum", {
+	get: function(){
+		return this.boundingBox.max;
+	}
+});
+
+
+
+
+
+
 
 var nodesLoadTimes = {};
 

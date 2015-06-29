@@ -67,7 +67,8 @@ Potree.PointColorType = {
 	SOURCE: 			10,
 	NORMAL: 			11,
 	PHONG: 				12,
-	TREE_DEPTH: 		13
+	TREE_DEPTH: 		13,
+	DECAL:				14
 };
 
 Potree.ClipMode = {
@@ -82,6 +83,7 @@ Potree.TreeType = {
 };
 
 Potree.PointCloudMaterial = function(parameters){
+	THREE.Material.call( this );
 	parameters = parameters || {};
 
 	var color = new THREE.Color( 0x000000 );
@@ -106,6 +108,7 @@ Potree.PointCloudMaterial = function(parameters){
 	this._weighted = false;
 	this._blendDepth = 0.1;
 	this._depthMap;
+	this._decal;
 	this._gradient = Potree.Gradients.RAINBOW;
 	this._classification = Potree.Classification.DEFAULT;
 	this.gradientTexture = Potree.PointCloudMaterial.generateGradientTexture(this._gradient);
@@ -130,18 +133,23 @@ Potree.PointCloudMaterial = function(parameters){
 		minSize:   			{ type: "f", value: 2 },
 		maxSize:   			{ type: "f", value: 2 },
 		nodeSize:			{ type: "f", value: nodeSize },
+		octreeSize:			{ type: "f", value: 0 },
+		bbMin:				{ type: "fv", value: [0,0,0] },
 		bbSize:				{ type: "fv", value: [0,0,0] },
 		heightMin:			{ type: "f", value: 0.0 },
 		heightMax:			{ type: "f", value: 1.0 },
 		intensityMin:		{ type: "f", value: 0.0 },
 		intensityMax:		{ type: "f", value: 1.0 },
-		visibleNodes:		{ type: "t", value: this.visibleNodesTexture },
 		pcIndex:   			{ type: "f", value: 0 },
+		level:				{ type: "f", value: 0 },
+		visibleNodesOffset:	{ type: "f", value: 0 },
+		visibleNodes:		{ type: "t", value: this.visibleNodesTexture },
 		gradient: 			{ type: "t", value: this.gradientTexture },
 		classificationLUT: 	{ type: "t", value: this.classificationTexture },
+		depthMap: 			{ type: "t", value: null },
+		decal:	 			{ type: "t", value: new THREE.Texture() },
 		clipBoxes:			{ type: "Matrix4fv", value: [] },
 		blendDepth:			{ type: "f", value: this._blendDepth },
-		depthMap: 			{ type: "t", value: null },
 		diffuse:			{ type: "fv", value: [1,1,1]},
 		ambient:			{ type: "fv", value: [0.1, 0.1, 0.1]},
 		ambientLightColor: 			{ type: "fv", value: [1, 1, 1] },
@@ -209,6 +217,13 @@ Potree.PointCloudMaterial.prototype.updateShaderSource = function(){
 		this.uniforms.depthMap.value = this.depthMap;
 		this.setValues({
 			depthMap: this.depthMap,
+		});
+	}
+	
+	if(this.decal){
+		this.uniforms.decal.value = this.decal;
+		this.setValues({
+			decal: this.decal,
 		});
 	}
 	
@@ -292,6 +307,8 @@ Potree.PointCloudMaterial.prototype.getDefines = function(){
 		defines += "#define color_type_normal\n";
 	}else if(this._pointColorType === Potree.PointColorType.PHONG){
 		defines += "#define color_type_phong\n";
+	}else if(this._pointColorType === Potree.PointColorType.DECAL){
+		defines += "#define color_type_decal\n";
 	}
 	
 	if(this.clipMode === Potree.ClipMode.DISABLED){
@@ -476,9 +493,11 @@ Object.defineProperty(Potree.PointCloudMaterial.prototype, "opacity", {
 		return this.uniforms.opacity.value;
 	},
 	set: function(value){
-		if(this.uniforms.opacity.value !== value){
-			this.uniforms.opacity.value = value;
-			this.updateShaderSource();
+		if(this.uniforms.opacity){
+			if(this.uniforms.opacity.value !== value){
+				this.uniforms.opacity.value = value;
+				this.updateShaderSource();
+			}
 		}
 	}
 });
@@ -514,6 +533,18 @@ Object.defineProperty(Potree.PointCloudMaterial.prototype, "depthMap", {
 	set: function(value){
 		if(this._depthMap !== value){
 			this._depthMap = value;
+			this.updateShaderSource();
+		}
+	}
+});
+
+Object.defineProperty(Potree.PointCloudMaterial.prototype, "decal", {
+	get: function(){
+		return this._decal;
+	},
+	set: function(value){
+		if(this._decal !== value){
+			this._decal = value;
 			this.updateShaderSource();
 		}
 	}

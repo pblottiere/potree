@@ -84,6 +84,7 @@ Potree.PointCloudOctree = function(geometry, material){
 	this.pickMaterial;
 	this.maxLevel = 0;
 	this.generateDEM = false;
+	this.mapProjector = new Potree.OLMapProjector(this);
 	
 	var rootProxy = new Potree.PointCloudOctreeProxyNode(this.pcoGeometry.root);
 	this.add(rootProxy);
@@ -197,8 +198,44 @@ Potree.PointCloudOctree.prototype.updateProfileRequests = function(){
 Potree.PointCloudOctree.prototype.updatePointCloud = function(node, element, stack, visibleGeometryNames){
 	this.numVisibleNodes++;
 	this.numVisiblePoints += node.numPoints;
-	node.material = this.material;
 	this.visibleNodes.push(element);
+	
+	node.material.fov = camera.fov * (Math.PI / 180);
+	node.material.screenWidth = renderer.domElement.clientWidth;
+	node.material.screenHeight = renderer.domElement.clientHeight;
+	node.material.spacing = this.pcoGeometry.spacing;
+	node.material.near = camera.near;
+	node.material.far = camera.far;
+	node.material.octreeLevels = this.maxLevel;
+	node.material.pointColorType = this.material.pointColorType;
+	node.material.pointSizeType = this.material.pointSizeType;
+	node.material.pointShape = this.material.pointShape;
+	node.material.interpolate = this.material.interpolate;
+	node.material.size = this.material.size;
+	node.material.heightMin = this.material.heightMin;
+	node.material.heightMax = this.material.heightMax;
+	node.material.intensityMin = this.material.intensityMin;
+	node.material.intensityMax = this.material.intensityMax;
+	node.material.weighted = this.material.weighted;
+	node.material.opacity = this.material.opacity;
+	node.material.minSize = this.material.minSize;
+	node.material.uniforms.level.value = node.level;
+	
+	node.material.uniforms.octreeSize.value = this.pcoGeometry.boundingBox.size().x;
+	node.material.uniforms.nodeSize.value = node.pcoGeometry.boundingBox.size().x;
+	node.material.uniforms.bbMin.value = node.pcoGeometry.boundingBox.min.toArray();
+	
+	node.material.uniforms.visibleNodesTexture = this.material.visibleNodesTexture;
+	node.material.uniforms.visibleNodes.value = this.material.visibleNodesTexture;
+	
+	if(!node.geoTexture){
+		node.visible = false;
+	}
+	
+	if(typeof node.mapProjector === "undefined"){
+		node.mapProjector = new Potree.OLMapProjector(this);
+		node.mapProjector.project(node);
+	}
 	
 	if(node.level){
 		this.maxLevel = Math.max(node.level, this.maxLevel);
@@ -342,7 +379,8 @@ Potree.PointCloudOctree.prototype.update = function(camera, renderer){
 	this.hideDescendants(this.children[0]);
 	var vn = [];
 	for(var i = 0; i < this.visibleNodes.length; i++){
-		this.visibleNodes[i].node.visible = true;
+		// TODO = trues
+		this.visibleNodes[i].node.visible = this.visibleNodes[i].node.geoTexture != null;
 		vn.push(this.visibleNodes[i].node);
 	}
 	
@@ -495,6 +533,7 @@ Potree.PointCloudOctree.prototype.updateVisibilityTexture = function(material, v
 	
 	for(var i = 0; i < visibleNodes.length; i++){
 		var node = visibleNodes[i];
+		node.material.uniforms.visibleNodesOffset.value = i;
 		
 		var children = [];
 		for(var j = 0; j < node.children.length; j++){
@@ -577,7 +616,8 @@ Potree.PointCloudOctree.prototype.replaceProxy = function(proxy){
 	var geometryNode = proxy.geometryNode;
 	if(geometryNode.loaded === true){
 		var geometry = geometryNode.geometry;
-		var node = new THREE.PointCloud(geometry, this.material);
+		var material = new Potree.PointCloudMaterial();
+		var node = new THREE.PointCloud(geometry, material);
 		node.name = proxy.name;
 		node.level = proxy.level;
 		node.numPoints = proxy.numPoints;
@@ -1470,3 +1510,27 @@ Object.defineProperty(Potree.PointCloudOctree.prototype, "progress", {
 		return this.visibleNodes.length / this.visibleGeometry.length;
 	}
 });
+
+Object.defineProperty(Potree.PointCloudOctree.prototype, "geoProjection", {
+	get: function(){
+		//return "EPSG:21781"; // swiss
+		return "EPSG:26910"; // CA13 SAN SIMEON
+	}
+});
+
+Object.defineProperty(Potree.PointCloudOctree.prototype, "geoMinimum", {
+	get: function(){
+		return this.boundingBox.min;
+	}
+});
+
+Object.defineProperty(Potree.PointCloudOctree.prototype, "geoMaximum", {
+	get: function(){
+		return this.boundingBox.max;
+	}
+});
+
+
+
+
+
