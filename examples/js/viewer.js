@@ -28,6 +28,7 @@ var directionalLight;
 var showStats = false;
 var showBoundingBox = false;
 var freeze = false;
+var nearClipPlane = 0.1;
 
 var fpControls;
 var orbitControls;
@@ -133,7 +134,8 @@ function initGUI(){
 		"BoundingBox": showBoundingBox,
 		"DEM Collisions": useDEMCollisions,
 		"MinNodeSize": minNodeSize,
-		"freeze": freeze
+		"freeze": freeze,
+		"near": nearClipPlane
 	};
 	
 	var pPoints = gui.add(params, 'points(m)', 0, 4);
@@ -257,7 +259,11 @@ function initGUI(){
 	
 	
 	var fDebug = gui.addFolder('Debug');
-
+	
+	var pNear = fDebug.add(params, 'near', 0.01, 1);
+	pNear.onChange(function(value){
+		nearClipPlane = value;
+	});
 	
 	var pStats = fDebug.add(params, 'stats');
 	pStats.onChange(function(value){
@@ -592,6 +598,7 @@ function update(){
 	}
 	
 	camera.fov = fov;
+	camera.near = nearClipPlane;
 	
 	if(controls){
 		controls.update(clock.getDelta());
@@ -975,6 +982,7 @@ var EDLRenderer = function(){
 		attributeMaterial.minSize = 2;
 		attributeMaterial.useLogarithmicDepthBuffer = false;
 		attributeMaterial.useEDL = true;
+		
 
 		rtColor = new THREE.WebGLRenderTarget( 1024, 1024, { 
 			minFilter: THREE.LinearFilter, 
@@ -1085,6 +1093,7 @@ var EDLRenderer = function(){
 				attributeMaterial.intensityMax = pointcloud.material.intensityMax;
 				attributeMaterial.setClipBoxes(pointcloud.material.clipBoxes);
 				attributeMaterial.clipMode = pointcloud.material.clipMode;
+				attributeMaterial.interpolate = (quality === "Interpolation");
 				pointcloud.updateVisibilityTexture(attributeMaterial, vn);
 				
 				scenePointCloud.overrideMaterial = attributeMaterial;
