@@ -318,6 +318,9 @@ Potree.OrbitControls = function ( object, domElement ) {
 			phiDelta *= attenuation;
 			scale = 1 + (scale-1) * attenuation;
 			pan.multiplyScalar( attenuation );
+			
+			thetaDelta = Math.abs(thetaDelta) < 0.01 ? 0 : thetaDelta;
+			phiDelta = Math.abs(phiDelta) < 0.01 ? 0 : phiDelta;
 		}
 
 		if ( lastPosition.distanceTo( this.object.position ) > 0 ) {

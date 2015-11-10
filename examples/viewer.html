@@ -69,14 +69,14 @@
 			
 			// set up things when the first point cloud has been loaded
 			if(viewer.pointclouds.length === 1){
-				viewer.flipYZ();
-				//viewer.useOrbitControls();
-				viewer.useEarthControls();
+				//viewer.flipYZ();
+				viewer.useOrbitControls();
+				//viewer.useEarthControls();
 				viewer.zoomTo(event.pointcloud, 1);
 			
-				viewer.camera.position.set(814, 100, 155);
-				viewer.camera.lookAt(new THREE.Vector3(768, 59, 110))
-				viewer.orbitControls.target = new THREE.Vector3(768, 59, 110);
+				//viewer.camera.position.set(814, 100, 155);
+				//viewer.camera.lookAt(new THREE.Vector3(768, 59, 110))
+				//viewer.orbitControls.target = new THREE.Vector3(768, 59, 110);
 			}
 		};
 	
@@ -92,12 +92,14 @@
 		viewer.setQuality("Squares");
 		
 		
-		viewer.addPointCloud("http://localhost/temp/layers/1/cloud.js", function(pointcloud){
-			console.log("point cloud 1 loaded");
-		});
-		viewer.addPointCloud("http://localhost/temp/layers/2/cloud.js", function(pointcloud){
-			console.log("point cloud 2 loaded");
-		});
+		//viewer.addPointCloud("http://localhost/temp/layers/1/cloud.js", function(pointcloud){
+		//	console.log("point cloud 1 loaded");
+		//});
+		//viewer.addPointCloud("http://localhost/temp/layers/2/cloud.js", function(pointcloud){
+		//	console.log("point cloud 2 loaded");
+		//});
+		
+		viewer.addPointCloud("http://5.9.65.151/mschuetz/potree/resources/pointclouds/opentopography/CA13/cloud.js");
 		
 		
 	</script>

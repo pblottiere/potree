@@ -1691,24 +1691,74 @@ Potree.updatePointClouds = function(pointclouds, camera, renderer){
 
 
 Potree.updateVisibility = function(pointclouds, camera, renderer){
-	var numVisibleNodes = 0;
-	var numVisiblePoints = 0;
+
+	if(!this.visibilityUpdater){
+		this.visibilityUpdater = {
+			numVisibleNodes: 0,
+			numVisiblePoints: 0,
+			visibleNodes: [],
+			visibleGeometry: [],
+			unloadedGeometry: [],
+			previousCameraMatrix: camera.matrixWorld.clone(),
+			previousProjectionMatrix: camera.projectionMatrix.clone(),
+			priorityQueue: new BinaryHeap(function(x){return 1 / x.weight;}),
+		};
+	}
 	
-	var visibleNodes = [];
-	var visibleGeometry = [];
-	var unloadedGeometry = [];
+	var vu = this.visibilityUpdater;
 	
 	var frustums = [];
 	var camObjPositions = [];
+	
+	{
+		var same = true;
+		var pcm = vu.previousCameraMatrix;
+		var ppm = vu.previousProjectionMatrix;
+		for(var i = 0; i < 16; i++){
+			same = same && (pcm.elements[i] == camera.matrixWorld.elements[i]);
+			same = same && (ppm.elements[i] == camera.projectionMatrix.elements[i]);
+		}
+		
+		if(!same){
+			Potree.pointBudget = 1*1000*1000;
+			vu.numVisibleNodes = 0;
+			vu.numVisiblePoints = 0;
+			vu.visibleNodes = [];
+			vu.visibleGeometry = [];
+			vu.previousCameraMatrix = camera.matrixWorld.clone();
+			vu.previousProjectionMatrix = camera.projectionMatrix.clone();
+			vu.priorityQueue = new BinaryHeap(function(x){return 1 / x.weight;});
+			
+			for(var i = 0; i < pointclouds.length; i++){
+				var pointcloud = pointclouds[i];
+				
+				pointcloud.numVisibleNodes = 0;
+				pointcloud.numVisiblePoints = 0;
+				pointcloud.visibleNodes = [];
+				pointcloud.visibleGeometry = [];
+			
+				if(pointcloud.visible){
+					vu.priorityQueue.push({pointcloud: i, node: pointcloud.root, weight: Number.MAX_VALUE});
+				}
+				
+				// hide all previously visible nodes
+				if(pointcloud.root instanceof Potree.PointCloudOctreeNode){
+					pointcloud.hideDescendants(pointcloud.root.sceneNode);
+				}
+				for(var j = 0; j < pointcloud.boundingBoxNodes.length; j++){
+					pointcloud.boundingBoxNodes[j].visible = false;
+				}
+			}
+		}else{
+			Potree.pointBudget += 200000;
+			vu.unloadedGeometry = [];
+		}
+	}
 
 	// calculate object space frustum and cam pos and setup priority queue
-	var priorityQueue = new BinaryHeap(function(x){return 1 / x.weight;});
+	//var priorityQueue = new BinaryHeap(function(x){return 1 / x.weight;});
 	for(var i = 0; i < pointclouds.length; i++){
 		var pointcloud = pointclouds[i];
-		pointcloud.numVisibleNodes = 0;
-		pointcloud.numVisiblePoints = 0;
-		pointcloud.visibleNodes = [];
-		pointcloud.visibleGeometry = [];
 		
 		// frustum in object space
 		camera.updateMatrixWorld();
@@ -1726,44 +1776,34 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 		var camMatrixObject = new THREE.Matrix4().multiply(worldI).multiply(view);
 		var camObjPos = new THREE.Vector3().setFromMatrixPosition( camMatrixObject );
 		camObjPositions.push(camObjPos);
-		
-		if(pointcloud.visible){
-			priorityQueue.push({pointcloud: i, node: pointcloud.root, weight: Number.MAX_VALUE});
-		}
-		
-		// hide all previously visible nodes
-		if(pointcloud.root instanceof Potree.PointCloudOctreeNode){
-			pointcloud.hideDescendants(pointcloud.root.sceneNode);
-		}
-		for(var j = 0; j < pointcloud.boundingBoxNodes.length; j++){
-			pointcloud.boundingBoxNodes[j].visible = false;
-		}
 	}
 	
-	while(priorityQueue.size() > 0){
-		var element = priorityQueue.pop();
+	var countBefore = vu.priorityQueue.size();
+	var processedNodes = [];
+	var message = "before: " + vu.priorityQueue.size();
+	var swapQueue = new BinaryHeap(function(x){return 1 / x.weight;});
+	while(vu.priorityQueue.size() > 0){
+		var element = vu.priorityQueue.pop();
 		var node = element.node;
 		var parent = element.parent;
 		var pointcloud = pointclouds[element.pointcloud];
+		
+		if(processedNodes.indexOf(element.pointcloud + "_" + node.name) >= 0){
+			vfasdf;
+		}
+		processedNodes.push(element.pointcloud + "_" + node.name);
+		
 		
 		var box = node.boundingBox;
 		var frustum = frustums[element.pointcloud];
 		var camObjPos = camObjPositions[element.pointcloud];
 		
-		var insideFrustum = frustum.intersectsBox(box);
-		var visible = insideFrustum;
-		visible = visible && !(numVisiblePoints + node.numPoints > Potree.pointBudget);
+		var visible = frustum.intersectsBox(box);
+		//visible = visible && !(vu.numVisiblePoints + node.numPoints > Potree.pointBudget);
 		
 		if(!visible){
 			continue;
 		}
-		
-		numVisibleNodes++;
-		numVisiblePoints += node.numPoints;
-		
-		pointcloud.numVisibleNodes++;
-		pointcloud.numVisiblePoints += node.numPoints;
-		
 		
 		// if geometry is loaded, create a scene node
 		if(node instanceof Potree.PointCloudOctreeGeometryNode){
@@ -1823,25 +1863,33 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 				pcoNode.geometryNode.oneTimeDisposeHandlers.push(disposeListener);
 				
 				node = pcoNode;
+				
+				element.node = node;
+				swapQueue.push(element);
+			}else if(!geometryNode.loaded){
+				vu.unloadedGeometry.push(element);
+				vu.visibleGeometry.push(node);
+				swapQueue.push(element);
 			}
-			
-			if(!geometryNode.loaded){
-				unloadedGeometry.push(node);
-				visibleGeometry.push(node);
+		}else if(node instanceof Potree.PointCloudOctreeNode){
+			if((vu.numVisiblePoints > Potree.pointBudget)){
+				swapQueue.push(element);
+				continue;
 			}
-			
-		}
 		
-		
-		if(node instanceof Potree.PointCloudOctreeNode){
 			Potree.PointCloudOctree.lru.touch(node.geometryNode);
 			node.sceneNode.visible = true;
 			node.sceneNode.material = pointcloud.material;
 			
-			visibleNodes.push(node);
+			pointcloud.numVisibleNodes++;
+			pointcloud.numVisiblePoints += node.numPoints;
+			vu.numVisibleNodes++;
+			vu.numVisiblePoints += node.numPoints;
+			
+			vu.visibleNodes.push(node);
 			pointcloud.visibleNodes.push(node);
 			
-			visibleGeometry.push(node.geometryNode);
+			vu.visibleGeometry.push(node.geometryNode);
 			pointcloud.visibleGeometry.push(node.geometryNode);
 			
 			if(node.parent){
@@ -1868,45 +1916,61 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 					node.dem = pointcloud.createDEM(node);
 				}
 			}
+			
+			
+			
+			// add child nodes to priorityQueue
+			for(var i = 0; i < 8; i++){
+				if(!node.children[i]){
+					continue;
+				}
+				
+				var child = node.children[i];
+				
+				var sphere = child.boundingSphere;
+				var distance = sphere.center.distanceTo(camObjPos);
+				var radius = sphere.radius;
+				
+				var fov = camera.fov / 2 * Math.PI / 180.0;
+				var pr = 1 / Math.tan(fov) * radius / Math.sqrt(distance * distance - radius * radius);
+				
+				var screenPixelRadius = renderer.domElement.clientHeight * pr;
+				if(screenPixelRadius < pointcloud.minimumNodePixelSize){
+					continue;
+				}
+				
+				var weight = pr;
+				if(distance - radius < 0){
+					weight = Number.MAX_VALUE;
+				}
+				
+				vu.priorityQueue.push({pointcloud: element.pointcloud, node: child, parent: node, weight: weight});
+			}
 		} 
 		
-		
-		// add child nodes to priorityQueue
-		for(var i = 0; i < 8; i++){
-			if(!node.children[i]){
-				continue;
-			}
-			
-			var child = node.children[i];
-			
-			var sphere = child.boundingSphere;
-			var distance = sphere.center.distanceTo(camObjPos);
-			var radius = sphere.radius;
-			
-			var fov = camera.fov / 2 * Math.PI / 180.0;
-			var pr = 1 / Math.tan(fov) * radius / Math.sqrt(distance * distance - radius * radius);
-			
-			var screenPixelRadius = renderer.domElement.clientHeight * pr;
-			if(screenPixelRadius < pointcloud.minimumNodePixelSize){
-				continue;
-			}
-			
-			var weight = pr;
-			if(distance - radius < 0){
-				weight = Number.MAX_VALUE;
-			}
-			
-			priorityQueue.push({pointcloud: element.pointcloud, node: child, parent: node, weight: weight});
-		}
 		
 		
 	}// end priority queue loop
 	
-	for(var i = 0; i < Math.min(5, unloadedGeometry.length); i++){
-		unloadedGeometry[i].load();
+	vu.priorityQueue = swapQueue;
+	
+	
+	//while(vu.priorityQueue.size() > 0){
+	//	swapQueue.push(vu.priorityQueue.pop());
+	//}
+	
+	for(var i = 0; i < Math.min(5, vu.unloadedGeometry.length); i++){
+		vu.unloadedGeometry[i].node.load();
 	}
 	
-	return {visibleNodes: visibleNodes, numVisiblePoints: numVisiblePoints};
+	//for(var i = 0; i < vu.unloadedGeometry.length; i++){
+	//	vu.priorityQueue.push(vu.unloadedGeometry[i]);
+	//}
+	
+	vu.previousCameraMatrix.copy(camera.matrixWorld);
+	vu.previousProjectionMatrix.copy(camera.projectionMatrix);
+	
+	return {visibleNodes: vu.visibleNodes, numVisiblePoints: vu.numVisiblePoints};
 };
 
 
