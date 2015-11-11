@@ -69,7 +69,7 @@
 			
 			// set up things when the first point cloud has been loaded
 			if(viewer.pointclouds.length === 1){
-				//viewer.flipYZ();
+				viewer.flipYZ();
 				viewer.useOrbitControls();
 				//viewer.useEarthControls();
 				viewer.zoomTo(event.pointcloud, 1);
@@ -92,14 +92,15 @@
 		viewer.setQuality("Squares");
 		
 		
-		//viewer.addPointCloud("http://localhost/temp/layers/1/cloud.js", function(pointcloud){
-		//	console.log("point cloud 1 loaded");
-		//});
-		//viewer.addPointCloud("http://localhost/temp/layers/2/cloud.js", function(pointcloud){
-		//	console.log("point cloud 2 loaded");
-		//});
+		viewer.addPointCloud("http://localhost/temp/layers/1/cloud.js", function(pointcloud){
+			console.log("point cloud 1 loaded");
+		});
+		viewer.addPointCloud("http://localhost/temp/layers/2/cloud.js", function(pointcloud){
+			console.log("point cloud 2 loaded");
+		});
 		
-		viewer.addPointCloud("http://5.9.65.151/mschuetz/potree/resources/pointclouds/opentopography/CA13/cloud.js");
+		//viewer.addPointCloud("http://5.9.65.151/mschuetz/potree/resources/pointclouds/opentopography/CA13/cloud.js");
+		//viewer.addPointCloud("../resources/pointclouds/lion_takanawa/cloud.js");
 		
 		
 	</script>

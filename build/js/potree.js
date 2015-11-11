@@ -731,6 +731,42 @@ Potree.Shaders["normalize.fs"] = [
  "}",
 ].join("\n");
 
+Potree.Shaders["screen.vs"] = [
+ "",
+ "",
+ "varying vec2 vUv;",
+ "",
+ "void main() {",
+ "    vUv = uv;",
+ "	",
+ "	vec4 mvPosition = modelViewMatrix * vec4(position,1.0);",
+ "",
+ "    gl_Position = projectionMatrix * mvPosition;",
+ "}",
+].join("\n");
+
+Potree.Shaders["screen.fs"] = [
+ "",
+ "",
+ "uniform mat4 projectionMatrix;",
+ "",
+ "uniform float screenWidth;",
+ "uniform float screenHeight;",
+ "uniform float near;",
+ "uniform float far;",
+ "uniform float opacity;",
+ "",
+ "uniform sampler2D colorMap;",
+ "",
+ "varying vec2 vUv;",
+ "",
+ "void main(){",
+ "	vec4 color = texture2D(colorMap, vUv);",
+ "	gl_FragColor = vec4(color.rgb, opacity);",
+ "}",
+ "",
+].join("\n");
+
 Potree.Shaders["edl.vs"] = [
  "",
  "",
@@ -2519,6 +2555,48 @@ Potree.EyeDomeLightingMaterial.prototype = new THREE.ShaderMaterial();
 
 
 
+
+
+Potree.ScreenMaterial = function(parameters){
+	THREE.Material.call( this );
+
+	parameters = parameters || {};
+	
+	var uniforms = {
+		screenWidth: 	{ type: "f", 	value: 0 },
+		screenHeight: 	{ type: "f", 	value: 0 },
+		near: 			{ type: "f", 	value: 0 },
+		far: 			{ type: "f", 	value: 0 },
+		colorMap: 		{ type: "t", 	value: null },
+		opacity:		{ type: "f",	value: 1.0}
+	};
+	
+	this.setValues({
+		uniforms: uniforms,
+		vertexShader: Potree.Shaders["screen.vs"],
+		fragmentShader: Potree.Shaders["screen.fs"],
+	});
+	
+};
+
+
+Potree.ScreenMaterial.prototype = new THREE.ShaderMaterial();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // see http://john-chapman-graphics.blogspot.co.at/2013/01/ssao-tutorial.html
 
 
@@ -3683,6 +3761,9 @@ Potree.OrbitControls = function ( object, domElement ) {
 			phiDelta *= attenuation;
 			scale = 1 + (scale-1) * attenuation;
 			pan.multiplyScalar( attenuation );
+			
+			thetaDelta = Math.abs(thetaDelta) < 0.01 ? 0 : thetaDelta;
+			phiDelta = Math.abs(phiDelta) < 0.01 ? 0 : phiDelta;
 		}
 
 		if ( lastPosition.distanceTo( this.object.position ) > 0 ) {
@@ -8111,6 +8192,10 @@ Potree.ProfileTool = function(scene, camera, renderer){
 			if(I){
 				var pos = I.clone();
 				
+				if(scope.activeProfile.points.length === 1 && scope.activeProfile.width === null){
+					scope.activeProfile.setWidth(camera.position.distanceTo(pos) / 50);
+				}
+				
 				scope.activeProfile.addMarker(pos);
 				
 				var event = {
@@ -8300,7 +8385,7 @@ Potree.ProfileTool = function(scene, camera, renderer){
 		
 		var args = args || {};
 		var clip = args.clip || false;
-		var width = args.width || 1.0;
+		var width = args.width || null;
 		
 		this.activeProfile = new Potree.HeightProfile();
 		this.activeProfile.clip = clip;

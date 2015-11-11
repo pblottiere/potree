@@ -1169,6 +1169,15 @@ Potree.Viewer = function(domElement, args){
 	}
 
 	var PotreeRenderer = function(){
+	
+		var screenMaterial = new Potree.ScreenMaterial();
+	
+		var rtColor = new THREE.WebGLRenderTarget( 1024, 1024, { 
+			minFilter: THREE.LinearFilter, 
+			magFilter: THREE.NearestFilter, 
+			format: THREE.RGBAFormat, 
+			type: THREE.FloatType,
+		} );
 
 		this.render = function(){
 			{// resize
@@ -1180,6 +1189,21 @@ Potree.Viewer = function(domElement, args){
 				scope.camera.updateProjectionMatrix();
 				
 				scope.renderer.setSize(width, height);
+				
+				
+				var needsResize = (rtColor.width != width || rtColor.height != height);
+		
+				// disposal will be unnecessary once this fix made it into three.js master: 
+				// https://github.com/mrdoob/three.js/pull/6355
+				if(needsResize){
+					rtColor.dispose();
+				}
+			
+				rtColor.setSize(width, height);
+			}
+			
+			if(Potree.drawFromStart){
+				scope.renderer.clearTarget( rtColor, true, true, true );
 			}
 			
 
@@ -1211,6 +1235,54 @@ Potree.Viewer = function(domElement, args){
 			// render scene
 			scope.renderer.render(scope.scene, scope.camera);
 			scope.renderer.render(scope.scenePointCloud, scope.camera);
+			
+			
+			//var obj = scope.scenePointCloud.children[0];
+			//obj.visible = false;
+			//scope.renderer.render(scope.scenePointCloud, scope.camera);
+			//obj.visible = true;
+			//
+			//scope.scenePointCloud.updateMatrixWorld();
+			//scope.camera.updateMatrixWorld();
+			//
+			//scope.camera.matrixWorldInverse.getInverse( scope.camera.matrixWorld );
+			//
+			//viewer.renderer.projectObject(scope.scenePointCloud);
+			
+			//{
+			//	scope.renderer.setRenderTarget( rtColor );
+	        //
+			//	//scope.renderer.state.setDepthTest( false );
+			//	//scope.renderer.state.setDepthWrite( false );
+			//	//scope.renderer.state.setBlending( THREE.NoBlending );
+			//	
+			//	//scope.renderer.clear( true, true, true );
+			//	//scope.renderer.clear();
+			//
+			//	for(var i = 0; i < Potree.progressNodes.length; i++){
+			//		var element = Potree.progressNodes[i];
+			//		var node = element.node;
+			//		var object = node.sceneNode;
+			//		var geometry = object.geometry;
+			//		var material = object.material;
+			//		
+			//		scope.renderer.renderBufferDirect(scope.camera, [], null, material, geometry, object);
+			//	}
+			//}
+			
+			{
+				screenMaterial.uniforms.screenWidth.value = width;
+				screenMaterial.uniforms.screenHeight.value = height;
+				screenMaterial.uniforms.near.value = scope.camera.near;
+				screenMaterial.uniforms.far.value = scope.camera.far;
+				screenMaterial.uniforms.colorMap.value = rtColor;
+				screenMaterial.uniforms.opacity.value = scope.opacity;
+				screenMaterial.depthTest = false;
+				screenMaterial.depthWrite = false;
+				screenMaterial.transparent = true;
+				
+				//Potree.utils.screenPass.render(scope.renderer, screenMaterial);
+			}
 			
 			scope.profileTool.render();
 			scope.volumeTool.render();
@@ -1426,9 +1498,6 @@ Potree.Viewer = function(domElement, args){
 				magFilter: THREE.NearestFilter, 
 				format: THREE.RGBAFormat, 
 				type: THREE.FloatType,
-				//type: THREE.UnsignedByteType,
-				//depthBuffer: false,
-				//stencilBuffer: false
 			} );
 			
 		};
@@ -1691,9 +1760,10 @@ Potree.updatePointClouds = function(pointclouds, camera, renderer){
 
 
 Potree.updateVisibility = function(pointclouds, camera, renderer){
+	var scope = Potree;
 
-	if(!this.visibilityUpdater){
-		this.visibilityUpdater = {
+	if(!scope.visibilityUpdater){
+		scope.visibilityUpdater = {
 			numVisibleNodes: 0,
 			numVisiblePoints: 0,
 			visibleNodes: [],
@@ -1705,7 +1775,7 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 		};
 	}
 	
-	var vu = this.visibilityUpdater;
+	var vu = scope.visibilityUpdater;
 	
 	var frustums = [];
 	var camObjPositions = [];
@@ -1718,8 +1788,9 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 			same = same && (pcm.elements[i] == camera.matrixWorld.elements[i]);
 			same = same && (ppm.elements[i] == camera.projectionMatrix.elements[i]);
 		}
+		scope.drawFromStart = !same;
 		
-		if(!same){
+		if(scope.drawFromStart){
 			Potree.pointBudget = 1*1000*1000;
 			vu.numVisibleNodes = 0;
 			vu.numVisiblePoints = 0;
@@ -1753,6 +1824,8 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 			Potree.pointBudget += 200000;
 			vu.unloadedGeometry = [];
 		}
+		
+		
 	}
 
 	// calculate object space frustum and cam pos and setup priority queue
@@ -1777,22 +1850,15 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 		var camObjPos = new THREE.Vector3().setFromMatrixPosition( camMatrixObject );
 		camObjPositions.push(camObjPos);
 	}
+
 	
-	var countBefore = vu.priorityQueue.size();
-	var processedNodes = [];
-	var message = "before: " + vu.priorityQueue.size();
+	scope.progressNodes = [];
 	var swapQueue = new BinaryHeap(function(x){return 1 / x.weight;});
 	while(vu.priorityQueue.size() > 0){
 		var element = vu.priorityQueue.pop();
 		var node = element.node;
 		var parent = element.parent;
 		var pointcloud = pointclouds[element.pointcloud];
-		
-		if(processedNodes.indexOf(element.pointcloud + "_" + node.name) >= 0){
-			vfasdf;
-		}
-		processedNodes.push(element.pointcloud + "_" + node.name);
-		
 		
 		var box = node.boundingBox;
 		var frustum = frustums[element.pointcloud];
@@ -1880,6 +1946,8 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 			Potree.PointCloudOctree.lru.touch(node.geometryNode);
 			node.sceneNode.visible = true;
 			node.sceneNode.material = pointcloud.material;
+			
+			scope.progressNodes.push(element);
 			
 			pointcloud.numVisibleNodes++;
 			pointcloud.numVisiblePoints += node.numPoints;

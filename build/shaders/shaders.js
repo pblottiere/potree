@@ -666,6 +666,42 @@ Potree.Shaders["normalize.fs"] = [
  "}",
 ].join("\n");
 
+Potree.Shaders["screen.vs"] = [
+ "",
+ "",
+ "varying vec2 vUv;",
+ "",
+ "void main() {",
+ "    vUv = uv;",
+ "	",
+ "	vec4 mvPosition = modelViewMatrix * vec4(position,1.0);",
+ "",
+ "    gl_Position = projectionMatrix * mvPosition;",
+ "}",
+].join("\n");
+
+Potree.Shaders["screen.fs"] = [
+ "",
+ "",
+ "uniform mat4 projectionMatrix;",
+ "",
+ "uniform float screenWidth;",
+ "uniform float screenHeight;",
+ "uniform float near;",
+ "uniform float far;",
+ "uniform float opacity;",
+ "",
+ "uniform sampler2D colorMap;",
+ "",
+ "varying vec2 vUv;",
+ "",
+ "void main(){",
+ "	vec4 color = texture2D(colorMap, vUv);",
+ "	gl_FragColor = vec4(color.rgb, opacity);",
+ "}",
+ "",
+].join("\n");
+
 Potree.Shaders["edl.vs"] = [
  "",
  "",
