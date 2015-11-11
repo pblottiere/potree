@@ -34,7 +34,7 @@ THREE.EarthControls = function ( camera, renderer, scene ) {
 	var dragEnd = new THREE.Vector2();
 	
 	var sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
-	var sphereMaterial = new THREE.MeshNormalMaterial({shading: THREE.SmoothShading, transparent: true, opacity: 0.5});
+	var sphereMaterial = new THREE.MeshNormalMaterial({transparent: true, opacity: 0.5});
 	this.pivotNode = new THREE.Mesh(sphereGeometry, sphereMaterial);
 
 	var mouseDelta = new THREE.Vector2();

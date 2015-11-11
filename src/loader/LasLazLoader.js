@@ -187,7 +187,9 @@ Potree.LasLazBatcher = function(node){
 				returnNumbers_f[i] = returnNumbers[i];
 				numberOfReturns_f[i] = numberOfReturns[i];
 				pointSourceIDs_f[i] = pointSourceIDs[i];
-				iIndices[i] = i;
+				//iIndices[i] = i;
+				iIndices[i] = Math.random() * 3*1000*1000*1000;
+				iIndices[i] = Math.random() * 3*1000*1000;
 				
 				box.expandByPoint(new THREE.Vector3(fPositions[3*i+0], fPositions[3*i+1], fPositions[3*i+2]));
 			}

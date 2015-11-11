@@ -77,7 +77,11 @@ Potree.utils.loadSkybox = function(path){
         path + 'pz' + format, path + 'nz' + format
     ];
 
-    var textureCube = THREE.ImageUtils.loadTextureCube(urls, THREE.CubeRefractionMapping );
+    //var textureCube = THREE.ImageUtils.loadTextureCube(urls, THREE.CubeRefractionMapping );
+	var loader = new THREE.CubeTextureLoader();
+	loader.setCrossOrigin( this.crossOrigin );
+	var textureCube = loader.load( urls, undefined, undefined, undefined );
+	textureCube.mapping = THREE.CubeRefractionMapping;
 
     var shader = {
         uniforms: {
@@ -117,7 +121,7 @@ Potree.utils.createGrid = function createGrid(width, length, spacing, color){
 		 geometry.vertices.push(new THREE.Vector3(i*spacing-(spacing*width)/2, 0, +(spacing*length)/2));
 	}
 	
-	var line = new THREE.Line(geometry, material, THREE.LinePieces);
+	var line = new THREE.LineSegments( geometry, material );
 	line.receiveShadow = true;
 	return line;
 };
@@ -129,11 +133,9 @@ Potree.utils.createBackgroundTexture = function(width, height){
 		return (1 / (2 * Math.PI)) * Math.exp( - (x*x + y*y) / 2);
 	};
 
-	var map = THREE.ImageUtils.generateDataTexture( width, height, new THREE.Color() );
-	map.magFilter = THREE.NearestFilter;
-	var data = map.image.data;
+	var size = width * height;
+	var data = new Uint8Array( 3 * size );
 
-	//var data = new Uint8Array(width*height*4);
 	var chroma = [1, 1.5, 1.7];
 	var max = gauss(0, 0);
 
@@ -158,6 +160,10 @@ Potree.utils.createBackgroundTexture = function(width, height){
 		
 		}
 	}
+	
+	var map = new THREE.DataTexture(data, width, height, THREE.RGBFormat);
+	map.magFilter = THREE.NearestFilter;
+	map.needsUpdate = true;
 	
 	return map;
 };

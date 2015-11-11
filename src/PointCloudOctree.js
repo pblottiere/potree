@@ -381,7 +381,7 @@ Potree.PointCloudOctree.prototype.updateVisibility = function(camera, renderer){
 			if((typeof parent === "undefined" || parent instanceof Potree.PointCloudOctreeNode) 
 					&& geometryNode.loaded){
 				var pcoNode = new Potree.PointCloudOctreeNode();
-				var sceneNode = new THREE.PointCloud(geometry, this.material);
+				var sceneNode = new THREE.Points(geometry, this.material);
 				sceneNode.visible = false;
 				
 				pcoNode.octree = this;
@@ -934,7 +934,7 @@ Potree.PointCloudOctree.prototype.getProfile = function(start, end, width, depth
 			
 			var pointsFound = 0;
 			
-			if(object instanceof THREE.PointCloud){
+			if(object instanceof THREE.Points){
 				var geometry = object.geometry;
 				var positions = geometry.attributes.position;
 				var p = positions.array;
@@ -997,7 +997,7 @@ Potree.PointCloudOctree.prototype.getProfile = function(start, end, width, depth
 			if(object == this || object.level < depth){
 				for(var i = 0; i < object.children.length; i++){
 					var child = object.children[i];
-					if(child instanceof THREE.PointCloud){
+					if(child instanceof THREE.Points){
 						var sphere = child.boundingSphere.clone().applyMatrix4(child.matrixWorld);
 						if(cutPlane.distanceToSphere(sphere) < sphere.radius){
 							stack.push(child);	
@@ -1142,9 +1142,9 @@ Potree.PointCloudOctree.prototype.pick = function(renderer, camera, ray, params)
 		var object = nodes[i].sceneNode;
 		var geometry = object.geometry;
 		
-		if(!geometry.attributes.indices.buffer){
-			continue;
-		}
+		//if(!geometry.attributes.indices.buffer){
+		//	continue;
+		//}
 		
 		material.pcIndex = i + 1;
 		
@@ -1153,20 +1153,18 @@ Potree.PointCloudOctree.prototype.pick = function(renderer, camera, ray, params)
 			_gl.useProgram( program );
 			//_gl.disable( _gl.BLEND );
 			
+			var buffer = renderer.objects.getAttributeBuffer( geometry.attributes.indices );
+			
 			var attributePointer = _gl.getAttribLocation(program, "indices");
 			var attributeSize = 4;
-			_gl.bindBuffer( _gl.ARRAY_BUFFER, geometry.attributes.indices.buffer );
-			//if(!bufferSubmitted){
-			//	_gl.bufferData( _gl.ARRAY_BUFFER, new Uint8Array(geometry.attributes.indices.array), _gl.STATIC_DRAW );
-			//	bufferSubmitted = true;
-			//}
+			_gl.bindBuffer( _gl.ARRAY_BUFFER, buffer );
 			_gl.enableVertexAttribArray( attributePointer );
 			_gl.vertexAttribPointer( attributePointer, attributeSize, _gl.UNSIGNED_BYTE, true, 0, 0 ); 
 		
-			_gl.uniform1f(material.program.uniforms.pcIndex, material.pcIndex);
+			_gl.uniform1f(material.program.getUniforms().pcIndex, material.pcIndex);
 		}	
 		
-		renderer.renderBufferDirect(camera, [], null, material, geometry, object);
+		renderer.renderBufferDirect(camera, [], null, geometry,  material, object, null);
 		
 		var program = material.program.program;
 		_gl.useProgram( program );
@@ -1184,21 +1182,21 @@ Potree.PointCloudOctree.prototype.pick = function(renderer, camera, ray, params)
 		renderer.context.RGBA, renderer.context.UNSIGNED_BYTE, pixels);
 		
 
-		//{ // show big render target for debugging purposes
-		//	var br = new ArrayBuffer(width*height*4);
-		//	var bp = new Uint8Array(br);
-		//	renderer.context.readPixels( 0, 0, width, height, 
-		//		renderer.context.RGBA, renderer.context.UNSIGNED_BYTE, bp);
-		//
-		//	var img = pixelsArrayToImage(bp, width, height);
-		//	img.style.boder = "2px solid red";
-		//	img.style.position = "absolute";
-		//	img.style.top  = "0px";
-		//	img.style.width = width + "px";
-		//	img.style.height = height + "px";
-		//	img.onclick = function(){document.body.removeChild(img)};
-		//	document.body.appendChild(img);
-		//}
+		{ // show big render target for debugging purposes
+			var br = new ArrayBuffer(width*height*4);
+			var bp = new Uint8Array(br);
+			renderer.context.readPixels( 0, 0, width, height, 
+				renderer.context.RGBA, renderer.context.UNSIGNED_BYTE, bp);
+		
+			var img = pixelsArrayToImage(bp, width, height);
+			img.style.boder = "2px solid red";
+			img.style.position = "absolute";
+			img.style.top  = "0px";
+			img.style.width = width + "px";
+			img.style.height = height + "px";
+			img.onclick = function(){document.body.removeChild(img)};
+			document.body.appendChild(img);
+		}
 		
 		
 		
@@ -1582,9 +1580,9 @@ Potree.PointCloudOctree.prototype.generateTerain = function(){
 	}
 	
 	geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
-	var material = new THREE.PointCloudMaterial({size: 20, color: 0x00ff00});
+	var material = new THREE.PointsMaterial({size: 20, color: 0x00ff00});
 	
-	var pc = new THREE.PointCloud(geometry, material);
+	var pc = new THREE.Points(geometry, material);
 	scene.add(pc);
 	
 };

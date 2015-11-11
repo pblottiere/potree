@@ -214,7 +214,7 @@ Potree.PointCloudArena4D.prototype.update = function(camera, renderer){
 			}else{
 				this.loadQueue.push(element);
 			}
-		}else if(node instanceof THREE.PointCloud){
+		}else if(node instanceof THREE.Points){
 			if(this.numVisiblePoints + node.pcoGeometry.numPoints > this.visiblePointsTarget){
 				break;
 			}
@@ -341,7 +341,7 @@ Potree.PointCloudArena4D.prototype.replaceProxy = function(proxy){
 	var geometryNode = proxy.geometryNode;
 	if(geometryNode.loaded === true){
 		var geometry = geometryNode.geometry;
-		var node = new THREE.PointCloud(geometry, this.material);
+		var node = new THREE.Points(geometry, this.material);
 		node.number = proxy.number;
 		node.numPoints = proxy.numPoints;
 		node.boundingBox = geometryNode.boundingBox;

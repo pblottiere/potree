@@ -85,17 +85,15 @@ Potree.PointCloudMaterial = function(parameters){
 	THREE.Material.call( this );
 
 	parameters = parameters || {};
-
-	var color = new THREE.Color( 0xffffff );
-	var map = THREE.ImageUtils.generateDataTexture( 2048, 1, color );
-	map.magFilter = THREE.NearestFilter;
-	this.visibleNodesTexture = map;
+	
+	var data = new Uint8Array(3 * 2048);
+	this.visibleNodesTexture = new THREE.DataTexture(data, 2048, 1, THREE.RGBFormat);
+	this.visibleNodesTexture.needsUpdate = true;
 	
 	var pointSize = parameters.size || 1.0;
 	var minSize = parameters.minSize || 1.0;
 	var maxSize = parameters.maxSize || 50.0;
 	var treeType = parameters.treeType || Potree.TreeType.OCTREE;
-	var nodeSize = 1.0;
 	
 	this._pointSizeType = Potree.PointSizeType.ATTENUATED;
 	this._pointShape = Potree.PointShape.SQUARE;
@@ -115,7 +113,6 @@ Potree.PointCloudMaterial = function(parameters){
 	this._useLogarithmicDepthBuffer = false;
 	this._useEDL = false;
 	
-	var attributes = {};
 	var uniforms = {
 		spacing:			{ type: "f", value: 1.0 },
 		blendHardness:		{ type: "f", value: 2.0 },
@@ -169,14 +166,12 @@ Potree.PointCloudMaterial = function(parameters){
 	
 	this.setValues({
 		uniforms: uniforms,
-		attributes: attributes,
 		vertexShader: this.getDefines() + Potree.Shaders["pointcloud.vs"],
 		fragmentShader: this.getDefines() + Potree.Shaders["pointcloud.fs"],
 		vertexColors: THREE.VertexColors,
 		size: pointSize,
 		minSize: minSize,
 		maxSize: maxSize,
-		nodeSize: nodeSize,
 		pcIndex: 0,
 		alphaTest: 0.9
 	});
@@ -185,28 +180,10 @@ Potree.PointCloudMaterial = function(parameters){
 Potree.PointCloudMaterial.prototype = new THREE.ShaderMaterial();
 
 Potree.PointCloudMaterial.prototype.updateShaderSource = function(){
-	
-	var attributes = {};
-	if(this.pointColorType === Potree.PointColorType.INTENSITY
-		|| this.pointColorType === Potree.PointColorType.INTENSITY_GRADIENT){
-		attributes.intensity = { type: "f", value: [] };
-	}else if(this.pointColorType === Potree.PointColorType.CLASSIFICATION){
-		//attributes.classification = { type: "f", value: [] };
-	}else if(this.pointColorType === Potree.PointColorType.RETURN_NUMBER){
-		attributes.returnNumber = { type: "f", value: [] };
-		attributes.numberOfReturns = { type: "f", value: [] };
-	}else if(this.pointColorType === Potree.PointColorType.SOURCE){
-		attributes.pointSourceID = { type: "f", value: [] };
-	}else if(this.pointColorType === Potree.PointColorType.NORMAL || this.pointColorType === Potree.PointColorType.PHONG){
-		attributes.normal = { type: "f", value: [] };
-	}
-	attributes.classification = { type: "f", value: 0 };
-	
 	var vs = this.getDefines() + Potree.Shaders["pointcloud.vs"];
 	var fs = this.getDefines() + Potree.Shaders["pointcloud.fs"];
 	
 	this.setValues({
-		attributes: attributes,
 		vertexShader: vs,
 		fragmentShader: fs
 	});

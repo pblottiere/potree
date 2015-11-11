@@ -1879,7 +1879,7 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 			if((typeof parent === "undefined" || parent instanceof Potree.PointCloudOctreeNode) 
 					&& geometryNode.loaded){
 				var pcoNode = new Potree.PointCloudOctreeNode();
-				var sceneNode = new THREE.PointCloud(geometry, pointcloud.material);
+				var sceneNode = new THREE.Points(geometry, pointcloud.material);
 				sceneNode.visible = false;
 				
 				pcoNode.octree = pointcloud;
