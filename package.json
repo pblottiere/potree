@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "description": "WebGL point cloud viewer",
+  "main": "build/potree/potree.js",  
   "dependencies": {
     "gulp": "*",
     "gulp-size": "*",
