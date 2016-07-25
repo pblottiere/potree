@@ -37,7 +37,6 @@ function networkToNative(val) {
 }
 
 var decompress = function(schema, input, numPoints) {
-    console.log("DYNAMICLLAS!!!!!!!!!!!!!!!!!!!!!!!!!!");
     var x = new Module.DynamicLASZip();
 
     var abInt = new Uint8Array(input);
