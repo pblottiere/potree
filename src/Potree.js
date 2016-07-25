@@ -1,9 +1,14 @@
+THREE = require('three');
+proj4 = require('proj4');
 
+var Potree = {};
 
+ if ( typeof define === 'function' && define.amd ) {
+	define( 'potree', Potree );
+ } else if ( 'undefined' !== typeof exports && 'undefined' !== typeof module ) {
+	module.exports = Potree;
+ }
 
-function Potree(){
-	
-}
 Potree.version = {
 	major: 1,
 	minor: 4,
@@ -47,7 +52,7 @@ Potree.updatePointClouds = function(pointclouds, camera, renderer){
 	
 	for(var i = 0; i < pointclouds.length; i++){
 		var pointcloud = pointclouds[i];
-		pointcloud.updateMaterial(pointcloud.material, pointcloud.visibleNodes, camera, renderer);
+		//pointcloud.updateMaterial(pointcloud.material, pointcloud.visibleNodes, camera, renderer);
 		pointcloud.updateVisibleBounds();
 	}
 	

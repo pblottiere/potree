@@ -11,6 +11,9 @@ var through = require('through');
 var os = require('os');
 var File = gutil.File;
 
+//We need this one for the in-built webserver
+var connect = require('gulp-connect');
+
 
 var paths = {
 	potree : [
@@ -18,12 +21,15 @@ var paths = {
 		"src/PointCloudTree.js",
 		"src/WorkerManager.js",
 		"build/workers/BinaryDecoderWorker.js",
+		"build/workers/GreyhoundBinaryDecoderWorker.js",
 		"build/shaders/shaders.js",
 		"src/extensions/PerspectiveCamera.js",
 		"src/extensions/Ray.js",
 		"src/loader/POCLoader.js",
 		"src/loader/PointAttributes.js",
 		"src/loader/BinaryLoader.js",
+		"src/loader/GreyhoundBinaryLoader.js",
+		"src/loader/GreyhoundLoader.js",
 		"src/loader/LasLazLoader.js",
 		"src/materials/PointCloudMaterial.js",
 		"src/materials/EyeDomeLightingMaterial.js",
@@ -36,6 +42,8 @@ var paths = {
 		"src/Annotation.js",
 		"src/PointCloudOctree.js",
 		"src/PointCloudOctreeGeometry.js",
+		"src/PointCloudGreyhoundGeometry.js",
+		"src/PointCloudGreyhoundGeometryNode.js",
 		"src/utils.js",
 		"src/Features.js",
 		"src/TextSprite.js",
@@ -70,8 +78,14 @@ var workers = {
 	"LASDecoder": [
 		"src/workers/LASDecoderWorker.js"
 	],
-	"BinaryDecorder": [
+	"BinaryDecoder": [
 		"src/workers/BinaryDecoderWorker.js",
+		"src/Version.js",
+		"src/loader/PointAttributes.js"
+	],
+	"GreyhoundBinaryDecoder": [
+		"libs/plasio/workers/laz-perf.js",
+		"src/workers/GreyhoundBinaryDecoderWorker.js",
 		"src/Version.js",
 		"src/loader/PointAttributes.js"
 	]
@@ -100,8 +114,13 @@ gulp.task("workers", function(){
 		.pipe(size({showFiles: true}))
 		.pipe(gulp.dest('build/workers'));
 		
-	gulp.src(workers.BinaryDecorder)
+	gulp.src(workers.BinaryDecoder)
 		.pipe(encodeWorker('BinaryDecoderWorker.js', "Potree.workers.binaryDecoder"))
+		.pipe(size({showFiles: true}))
+		.pipe(gulp.dest('build/workers'));
+
+	gulp.src(workers.GreyhoundBinaryDecoder)
+		.pipe(encodeWorker('GreyhoundBinaryDecoderWorker.js', "Potree.workers.greyhoundBinaryDecoder"))
 		.pipe(size({showFiles: true}))
 		.pipe(gulp.dest('build/workers'));
 });
@@ -135,6 +154,12 @@ gulp.task("scripts", ['workers','shaders'], function(){
 });
 
 gulp.task('build', ['scripts']);
+
+// For development, it is now possible to use 'gulp webserver'
+// from the command line to start the server (default port is 8080)
+gulp.task('webserver', function() {
+  connect.server();
+});
 
 
 var encodeWorker = function(fileName, varname, opt){
