@@ -60,13 +60,16 @@ Potree.LasLazLoader.progressCB = function(arg){
 Potree.LasLazLoader.prototype.parse = function loadData(node, buffer){
 	var lf = new LASFile(buffer);
 	var handler = new Potree.LasLazBatcher(node);
-	
-	return Promise.resolve(lf).cancellable().then(function(lf) {
+
+	//return Promise.resolve(lf).cancellable().then(function(lf) {
+	//return Promise.resolve(lf).then(function(lf) {
+	return when.resolve(lf).then(function(lf) {
 		return lf.open().then(function() {
 			lf.isOpen = true;
 			return lf;
 		})
-		.catch(Promise.CancellationError, function(e) {
+		//.catch(Promise.CancellationError, function(e) {
+		.catch(function(e) {
 			// open message was sent at this point, but then handler was not called
 			// because the operation was cancelled, explicitly close the file
 			return lf.close().then(function() {
@@ -111,7 +114,7 @@ Potree.LasLazLoader.prototype.parse = function loadData(node, buffer){
 		};
 		
 		return reader();
-	}).then(function(v) {
+	})/*.then(function(v) {
 		var lf = v[0];
 		// we're done loading this file
 		//
@@ -131,13 +134,13 @@ Potree.LasLazLoader.prototype.parse = function loadData(node, buffer){
 	}).catch(Promise.CancellationError, function(e) {
 		// If there was a cancellation, make sure the file is closed, if the file is open
 		// close and then fail
-		if (lf.isOpen) 
+		if (lf.isOpen)
 			return lf.close().then(function() {
 				lf.isOpen = false;
 				throw e;
 			});
 		throw e;
-	});
+	});*/
 };
 
 Potree.LasLazLoader.prototype.handle = function(node, url){

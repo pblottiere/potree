@@ -17,7 +17,7 @@ Potree.POCLoader = function(){
  * @param url
  * @param loadingFinishedListener executed after loading the binary has been finished
  */
-Potree.POCLoader.load = function load(url, callback) {
+Potree.POCLoader.prototype.load = function load(url, callback) {
 	try{
 		var pco = new Potree.PointCloudOctreeGeometry();
 		pco.url = url;
