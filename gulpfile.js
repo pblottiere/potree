@@ -1,4 +1,3 @@
-
 var path = require('path');
 var gulp = require('gulp');
 
@@ -14,57 +13,59 @@ var File = gutil.File;
 //We need this one for the in-built webserver
 var connect = require('gulp-connect');
 
+var potree_src = ["src/Potree.js",
+		  "src/PointCloudTree.js",
+		  "src/WorkerManager.js",
+		  "build/workers/BinaryDecoderWorker.js",
+		  "build/workers/GreyhoundBinaryDecoderWorker.js",
+		  "build/workers/laslaz-worker.js",
+		  "build/workers/lasdecoder-worker.js",
+		  "build/shaders/shaders.js",
+		  "src/extensions/PerspectiveCamera.js",
+		  "src/extensions/Ray.js",
+		  "src/loader/POCLoader.js",
+		  "src/loader/PointAttributes.js",
+		  "src/loader/BinaryLoader.js",
+		  "src/loader/GreyhoundBinaryLoader.js",
+		  "src/loader/GreyhoundLoader.js",
+		  "src/loader/LasLazLoader.js",
+		  "src/materials/PointCloudMaterial.js",
+		  "src/materials/EyeDomeLightingMaterial.js",
+		  "src/materials/BlurMaterial.js",
+		  "src/FirstPersonControls.js",
+		  "src/GeoControls.js",
+		  "src/OrbitControls.js",
+		  "src/EarthControls.js",
+		  "src/LRU.js",
+		  "src/Annotation.js",
+		  "src/PointCloudOctree.js",
+		  "src/PointCloudOctreeGeometry.js",
+		  "src/PointCloudGreyhoundGeometry.js",
+		  "src/PointCloudGreyhoundGeometryNode.js",
+		  "src/utils.js",
+		  "src/Features.js",
+		  "src/TextSprite.js",
+		  "src/Version.js",
+		  "src/utils/MeasuringTool.js",
+		  "src/utils/ProfileTool.js",
+		  "src/utils/TransformationTool.js",
+		  "src/utils/VolumeTool.js",
+		  "src/arena4d/PointCloudArena4D.js",
+		  "src/arena4d/PointCloudArena4DGeometry.js",
+		  "src/viewer/ProgressBar.js",
+		  "src/viewer/viewer.js",
+		  "src/viewer/profile.js",
+		  "src/viewer/map.js",
+		  "src/plasio/LASFile.js",
+		  "src/plasio/LAZLoader.js",
+		  "src/plasio/LASDecoder.js",
+		  "src/plasio/pointFormatReaders.js"]
+var potree_mod_src = potree_src.slice();
+potree_mod_src.unshift("src/mod.js");
 
 var paths = {
-	potree : [
-		"src/Potree.js",
-		"src/PointCloudTree.js",
-		"src/WorkerManager.js",
-		"build/workers/BinaryDecoderWorker.js",
-		"build/workers/GreyhoundBinaryDecoderWorker.js",
-		"build/workers/laslaz-worker.js",
-		"build/workers/lasdecoder-worker.js",
-		"build/shaders/shaders.js",
-		"src/extensions/PerspectiveCamera.js",
-		"src/extensions/Ray.js",
-		"src/loader/POCLoader.js",
-		"src/loader/PointAttributes.js",
-		"src/loader/BinaryLoader.js",
-		"src/loader/GreyhoundBinaryLoader.js",
-		"src/loader/GreyhoundLoader.js",
-		"src/loader/LasLazLoader.js",
-		"src/materials/PointCloudMaterial.js",
-		"src/materials/EyeDomeLightingMaterial.js",
-		"src/materials/BlurMaterial.js",
-		"src/FirstPersonControls.js",
-		"src/GeoControls.js",
-		"src/OrbitControls.js",
-		"src/EarthControls.js",
-		"src/LRU.js",
-		"src/Annotation.js",
-		"src/PointCloudOctree.js",
-		"src/PointCloudOctreeGeometry.js",
-		"src/PointCloudGreyhoundGeometry.js",
-		"src/PointCloudGreyhoundGeometryNode.js",
-		"src/utils.js",
-		"src/Features.js",
-		"src/TextSprite.js",
-		"src/Version.js",
-		"src/utils/MeasuringTool.js",
-		"src/utils/ProfileTool.js",
-		"src/utils/TransformationTool.js",
-		"src/utils/VolumeTool.js",
-		"src/arena4d/PointCloudArena4D.js",
-		"src/arena4d/PointCloudArena4DGeometry.js",
-		"src/viewer/ProgressBar.js",
-		"src/viewer/viewer.js",
-		"src/viewer/profile.js",
-		"src/viewer/map.js",
-		"src/plasio/LASFile.js",
-		"src/plasio/LAZLoader.js",
-		"src/plasio/LASDecoder.js",
-		"src/plasio/pointFormatReaders.js"
-	],
+	potree : potree_src,
+	potree_mod : potree_mod_src,
 	laslaz: [
 		"build/workers/laslaz-worker.js",
 		"build/workers/lasdecoder-worker.js",
@@ -154,6 +155,15 @@ gulp.task("scripts", ['workers','shaders'], function(){
 		.pipe(gulp.dest('build/potree'));
 
 	gulp.src(paths.html)
+		.pipe(gulp.dest('build/potree'));
+
+	gulp.src(paths.potree_mod)
+		.pipe(concat('potree_mod.js'))
+		.pipe(size({showFiles: true}))
+		.pipe(gulp.dest('build/potree'))
+		.pipe(rename({suffix: '.min'}))
+		.pipe(uglify({preserveComments: 'some'}))
+		.pipe(size({showFiles: true}))
 		.pipe(gulp.dest('build/potree'));
 
 	return;

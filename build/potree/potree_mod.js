@@ -1,3 +1,7 @@
+THREE = require('three');
+proj4 = require('proj4');
+when = require('when');
+
 var Potree = {};
 
 if ( typeof define === 'function' && define.amd ) {

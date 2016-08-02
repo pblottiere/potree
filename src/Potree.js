@@ -1,14 +1,10 @@
-THREE = require('three');
-proj4 = require('proj4');
-when = require('when');
-
 var Potree = {};
 
- if ( typeof define === 'function' && define.amd ) {
-	define( 'potree', Potree );
- } else if ( 'undefined' !== typeof exports && 'undefined' !== typeof module ) {
-	module.exports = Potree;
- }
+if ( typeof define === 'function' && define.amd ) {
+       define( 'potree', Potree );
+} else if ( 'undefined' !== typeof exports && 'undefined' !== typeof module ) {
+       module.exports = Potree;
+}
 
 Potree.version = {
 	major: 1,
@@ -226,4 +222,5 @@ Potree.updateVisibility = function(pointclouds, camera, renderer){
 	return {visibleNodes: visibleNodes, numVisiblePoints: numVisiblePoints};
 };
 
-
+//return Potree  // since the other stuff was moved under Potree Namespace
+//}))
