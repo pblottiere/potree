@@ -179,7 +179,8 @@ Potree.Viewer = function(domElement, args){
 		        }
 		    });
 		} else if(path.indexOf("cloud.js") > 0){
-			Potree.POCLoader.load(path, function(geometry){
+			var loader = new Potree.POCLoader();
+			loader.load(path, function(geometry){
 				if(!geometry){
 					callback({type: "loading_failed"});
 				}else{

@@ -184,27 +184,27 @@ Potree.GreyhoundLoader.prototype.load = function load(url, callback) {
 				pgg.pointAttributes = new Potree.PointAttributes(attributes);
                 pgg.pointAttributes.byteSize = pointSize;
 
-                var offset = new THREE.Vector3(offset[0], offset[1], offset[2]);
+		var boundingBox = new THREE.Box3(
+		  new THREE.Vector3(
+		  globalBounds[0],
+		  globalBounds[1],
+		  globalBounds[2]),
+		  new THREE.Vector3(
+		  globalBounds[3],
+		  globalBounds[4],
+		  globalBounds[5]));
 
-				var boundingBox = new THREE.Box3(
-                        new THREE.Vector3(
-                            localBounds[0],
-                            localBounds[1],
-                            localBounds[2]),
-                        new THREE.Vector3(
-                            localBounds[3],
-                            localBounds[4],
-                            localBounds[5]));
+		  var tightBoundingBox = new THREE.Box3(
+		  new THREE.Vector3(
+		  globalBounds[0],
+		  globalBounds[1],
+		  globalBounds[2]),
+		  new THREE.Vector3(
+		  globalBounds[3],
+		  globalBounds[4],
+		  globalBounds[5]));
 
-				var tightBoundingBox = new THREE.Box3(
-                        new THREE.Vector3(
-                            localTightBounds[0],
-                            localTightBounds[1],
-                            localTightBounds[2]),
-                        new THREE.Vector3(
-                            localTightBounds[3],
-                            localTightBounds[4],
-                            localTightBounds[5]));
+	           var offset = new THREE.Vector3(offset[0], offset[1], offset[2]);
 
 				pgg.projection = greyhoundInfo.srs;
 				pgg.boundingBox = boundingBox;
@@ -213,6 +213,7 @@ Potree.GreyhoundLoader.prototype.load = function load(url, callback) {
 				pgg.tightBoundingSphere = tightBoundingBox.getBoundingSphere();
 
 				pgg.bbOffset = new THREE.Vector3(0,0,0);
+				pgg.bbOffset = offset;
 				pgg.offset = new THREE.Vector3(0,0,0);
 				pgg.scale = SCALE || greyhoundInfo.scale;
 

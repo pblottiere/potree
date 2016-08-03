@@ -16,7 +16,9 @@
   
 	<script src="../libs/jquery-2.1.4/jquery-2.1.4.min.js"></script>
 	<script src="../libs/jquery-ui-1.11.4/jquery-ui.min.js"></script>
-	
+
+	<script src="../libs/i18next/i18next.js"></script>
+	<script src="../node_modules/when/when.js"></script>
 	<script src="../libs/three.js/build/three.js"></script>
 	<script src="../libs/other/stats.min.js"></script>
 	<script src="../libs/other/BinaryHeap.js"></script>
@@ -111,7 +113,7 @@
 		viewer.setDescription("");
 		//viewer.setMinNodeSize(5);
 
-		viewer.addPointCloud("../resources/pointclouds/lion_takanawa_las/cloud.js");
+		viewer.addPointCloud("../pointclouds/lion_takanawa_las/cloud.js");
 		
 		viewer.loadGUI();
 		

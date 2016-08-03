@@ -91,6 +91,7 @@ onmessage = function(event){
 	var min = event.data.min;
 	var max = event.data.max;
 	var nodeOffset = event.data.offset;
+	var bbOffset = event.data.bbOffset;
 	var scale = event.data.scale;
 	var tightBoxMin = [ Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
 	var tightBoxMax = [ Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY ];
@@ -112,6 +113,10 @@ onmessage = function(event){
 				positions[3*j+0] = (cv.getUint32(offset + j*pointSize+0));
 				positions[3*j+1] = (cv.getUint32(offset + j*pointSize+4));
 				positions[3*j+2] = (cv.getUint32(offset + j*pointSize+8));
+
+				positions[3*j+0] = positions[3*j+0]*scale + bbOffset[0];
+			        positions[3*j+1] = positions[3*j+1]*scale + bbOffset[1];
+			        positions[3*j+2] = positions[3*j+2]*scale + bbOffset[2];
 
 				tightBoxMin[0] = Math.min(tightBoxMin[0], positions[3*j+0]);
 				tightBoxMin[1] = Math.min(tightBoxMin[1], positions[3*j+1]);

@@ -63,12 +63,12 @@ Potree.PointCloudGreyhoundGeometryNode.prototype.getURL = function(){
 
     var scale = this.pcoGeometry.scale;
     var boundsString =
-        (bb.min.x * scale + offset.x) + ',' +
-        (bb.min.y * scale + offset.y) + ',' +
-        (bb.min.z * scale + offset.z) + ',' +
-        (bb.max.x * scale + offset.x) + ',' +
-        (bb.max.y * scale + offset.y) + ',' +
-        (bb.max.z * scale + offset.z);
+        bb.min.x + ',' +
+        bb.min.y + ',' +
+        bb.min.z + ',' +
+        bb.max.x + ',' +
+        bb.max.y + ',' +
+        bb.max.z;
 
     var offsetString = offset.x + ',' + offset.y + ',' + offset.z;
 
@@ -220,12 +220,12 @@ Potree.PointCloudGreyhoundGeometryNode.prototype.loadHierarchyThenPoints = funct
         // in the dataset.  Add the offset to get there.
         var offset = node.offset;
         var boundsString =
-            (bb.min.x * scale + offset.x) + ',' +
-            (bb.min.y * scale + offset.y) + ',' +
-            (bb.min.z * scale + offset.z) + ',' +
-            (bb.max.x * scale + offset.x) + ',' +
-            (bb.max.y * scale + offset.y) + ',' +
-            (bb.max.z * scale + offset.z);
+            bb.min.x + ',' +
+            bb.min.y + ',' +
+            bb.min.z + ',' +
+            bb.max.x + ',' +
+            bb.max.y + ',' +
+            bb.max.z;
 
 		var hurl = '' + this.pcoGeometry.serverURL +
             'hierarchy?bounds=[' + boundsString + ']' +
