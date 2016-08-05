@@ -59,7 +59,8 @@ var potree_src = ["src/Potree.js",
 		  "src/plasio/LASFile.js",
 		  "src/plasio/LAZLoader.js",
 		  "src/plasio/LASDecoder.js",
-		  "src/plasio/pointFormatReaders.js"]
+		  "src/plasio/pointFormatReaders.js",
+		  "libs/other/BinaryHeap.js"]
 var potree_mod_src = potree_src.slice();
 potree_mod_src.unshift("src/mod.js");
 
